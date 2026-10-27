@@ -66,6 +66,14 @@ npm run dev
 
 Open the local URL displayed by Vite in your terminal.
 
+## 🌐 Live Demo
+
+Try Ghost in the Machine here:
+
+**[Launch Live Demo 👻](https://frontend-puce-chi-10.vercel.app)**
+
+**GitHub Repository:** https://github.com/abhishekkumarsahu1234567-rgb/ghost-in-the-machine
+
 ## 🔒 Privacy
 
 The project is designed to use a locally running language model. Actual privacy depends on the application configuration and any external services used.
