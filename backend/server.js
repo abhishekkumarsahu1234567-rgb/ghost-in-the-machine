@@ -29,68 +29,77 @@ app.post("/api/story", async (req, res) => {
     }
 
     if (prompt.length > 1000) {
-      return res.status(400).json({ error: "Prompt must be under 1000 characters." });
+      return res.status(400).json({
+        error: "Prompt must be under 1000 characters.",
+      });
     }
 
-    const apiKey = process.env.OLLAMA_API_KEY;
-    let response;
-    let story;
+    const apiKey = process.env.GROQ_API_KEY;
 
-    if (apiKey) {
-      response = await fetch("https://ollama.com/api/chat", {
+    if (!apiKey) {
+      console.error("GROQ_API_KEY is missing");
+      return res.status(500).json({
+        error: "AI service is not configured.",
+      });
+    }
+
+    const response = await fetch(
+      "https://api.groq.com/openai/v1/chat/completions",
+      {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model: process.env.OLLAMA_MODEL || "gemma4:31b",
+          model: process.env.GROQ_MODEL || "openai/gpt-oss-20b",
           messages: [
             {
+              role: "system",
+              content:
+                "You are a creative horror storyteller. Write original, atmospheric spooky stories under 250 words.",
+            },
+            {
               role: "user",
-              content: `Write a spooky story under 250 words based on this idea: ${prompt.trim()}`,
+              content: `Write a spooky story based on this idea: ${prompt.trim()}`,
             },
           ],
+          max_completion_tokens: 700,
           stream: false,
         }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        console.error("Ollama Cloud error:", response.status);
-        return res.status(502).json({ error: "Hosted AI could not generate a story." });
       }
+    );
 
-      story = data.message?.content;
-    } else {
-      response = await fetch("http://localhost:11434/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "gemma3:1b",
-          prompt: `Write a spooky story under 250 words based on this idea: ${prompt.trim()}`,
-          stream: false,
-        }),
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error(
+        "Groq API error:",
+        response.status,
+        data?.error?.message || "Unknown API error"
+      );
+
+      return res.status(502).json({
+        error: "Hosted AI could not generate a story. Please try again later.",
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        return res.status(502).json({ error: "Local Ollama could not generate a story." });
-      }
-
-      story = data.response;
     }
+
+    const story = data.choices?.[0]?.message?.content;
 
     if (!story) {
-      return res.status(502).json({ error: "No story returned. Please try again." });
+      console.error("Groq returned no story");
+      return res.status(502).json({
+        error: "No story returned. Please try again.",
+      });
     }
 
-    res.json({ story });
+    return res.json({ story });
   } catch (error) {
     console.error("Story generation failed:", error.message);
-    res.status(503).json({ error: "AI service unavailable. Please try again." });
+
+    return res.status(503).json({
+      error: "AI service unavailable. Please try again.",
+    });
   }
 });
 
